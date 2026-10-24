@@ -1,8 +1,10 @@
 services:
   - type: web
     name: vyla-siteflare
-    runtime: node
-    plan: free
-    buildCommand: npm install --omit=dev
-    startCommand: node server.mjs
-    healthCheckPath: /
+    runtime: static
+    buildCommand: cp workeradd.js dist/workeradd.js
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

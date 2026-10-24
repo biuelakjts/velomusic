@@ -1,3 +1,5 @@
+self.importScripts("/workeradd.js");
+
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -21,7 +23,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const proxyUrl = new URL("/media-proxy", self.location.origin);
+  const proxyUrl = new URL(
+    "/media-proxy",
+    self.VYLA_WORKER_URL || self.location.origin,
+  );
   proxyUrl.searchParams.set("url", requestUrl.toString());
   const headers = new Headers();
   for (const name of ["accept", "range", "if-range"]) {
