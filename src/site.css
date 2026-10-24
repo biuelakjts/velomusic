@@ -1,0 +1,127 @@
+@import "../../main/src/app/globals.css";
+@source "../../main/src";
+
+@media (max-width: 640px) {
+	html[data-siteflare="true"] .siteflare-app-layout {
+		flex-direction: column-reverse;
+		gap: 4px;
+	}
+
+	html[data-siteflare="true"] .siteflare-sidebar {
+		width: 100%;
+		height: 56px;
+		margin-top: 0;
+	}
+
+	html[data-siteflare="true"] .siteflare-sidebar > div {
+		width: 100%;
+		height: 56px;
+		flex-direction: row;
+		border-radius: 12px;
+	}
+
+	html[data-siteflare="true"] .siteflare-sidebar nav {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		gap: 14px;
+		padding: 0;
+		pointer-events: none;
+	}
+
+	html[data-siteflare="true"] .siteflare-sidebar nav > * {
+		pointer-events: auto;
+	}
+
+	html[data-siteflare="true"] .siteflare-sidebar > div > div {
+		position: relative;
+		z-index: 1;
+		height: 100%;
+		flex-direction: row;
+		align-items: center;
+		margin-left: auto;
+		padding: 0 12px;
+	}
+
+	html[data-siteflare="true"] .siteflare-main-scroll {
+		padding-bottom: 8px;
+	}
+
+	html[data-siteflare="true"] .siteflare-app-frame .grid-flow-col.grid-cols-2.grid-rows-5 {
+		grid-auto-flow: row;
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: none;
+		row-gap: 4px;
+	}
+
+	html[data-siteflare="true"] .siteflare-search-overlay {
+		left: 6px !important;
+		right: 6px !important;
+	}
+
+	html[data-siteflare="true"] .siteflare-app-frame h2 {
+		font-size: 19px !important;
+		line-height: 1.15 !important;
+	}
+
+	html[data-siteflare="true"] .siteflare-mini-player-grid {
+		grid-template-columns: minmax(0, 1fr) !important;
+	}
+
+	html[data-siteflare="true"] .siteflare-mini-player-grid > div:first-child {
+		gap: 8px;
+		padding-left: 10px;
+		padding-right: 112px;
+	}
+
+	html[data-siteflare="true"] .siteflare-mini-player-grid > div:first-child > button,
+	html[data-siteflare="true"] .siteflare-mini-player-grid > div:nth-child(2) {
+		display: none;
+	}
+
+	html[data-siteflare="true"] .siteflare-mini-player-controls {
+		inset: 0 8px 0 auto !important;
+		width: 102px;
+		justify-content: flex-end !important;
+	}
+
+	html[data-siteflare="true"] .siteflare-mini-player-controls > div {
+		gap: 0;
+	}
+
+	html[data-siteflare="true"] .siteflare-fullscreen-content {
+		flex-direction: column;
+		align-items: stretch;
+		overflow-x: hidden;
+		overflow-y: auto;
+		gap: 20px;
+		padding: 44px 16px 24px;
+	}
+
+	html[data-siteflare="true"] .siteflare-fullscreen-player-panel {
+		width: 100%;
+		min-height: 0;
+		flex: 0 0 auto;
+		justify-content: flex-start;
+	}
+
+	html[data-siteflare="true"] .siteflare-fullscreen-player-ui {
+		width: min(100%, 320px);
+		min-width: 0;
+	}
+
+	html[data-siteflare="true"] .siteflare-fullscreen-lyrics-panel {
+		width: 100%;
+		height: min(45vh, 380px);
+		min-height: 260px;
+		flex: 0 0 auto;
+		padding: 0;
+	}
+
+	html[data-siteflare="true"] .siteflare-fullscreen-lyrics-frame {
+		min-height: 0;
+	}
+}

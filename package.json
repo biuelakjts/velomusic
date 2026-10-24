@@ -1,0 +1,12 @@
+{
+  "name": "vyla-siteflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --dir ../main run siteflare:dev",
+    "build": "pnpm --dir ../main run siteflare:build && node copy-service-worker.mjs",
+    "preview": "pnpm --dir ../main run siteflare:preview",
+    "start": "node server.mjs",
+    "test": "node --test server.test.mjs"
+  }
+}
