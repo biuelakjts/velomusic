@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import { createSiteflareServer } from "./server.mjs";
+import { handleRequest as handleWorkerRequest } from "./worker.js";
 
 let distDir;
 let server;
@@ -162,4 +163,20 @@ test("serves the merged cover and media service worker with root scope", async (
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("service-worker-allowed"), "/");
   assert.match(await response.text(), /fetch/);
+});
+
+test("Worker CORS allows the frontend x-origin header", async () => {
+  const response = await handleWorkerRequest(
+    new Request("https://worker.example/youtube/search", {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://music.example",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type,x-origin",
+      },
+    }),
+  );
+
+  assert.equal(response.status, 204);
+  assert.match(response.headers.get("access-control-allow-headers"), /x-origin/i);
 });

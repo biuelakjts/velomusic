@@ -19,6 +19,7 @@ const CORS_REQUEST_HEADERS = [
   "range",
   "x-goog-visitor-id",
   "x-liner-user-agent",
+  "x-origin",
   "x-youtube-client-name",
   "x-youtube-client-version",
 ];
