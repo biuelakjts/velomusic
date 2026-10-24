@@ -1,5 +1,5 @@
 (() => {
-  const configuredUrl = "https://astra.envyrants.workers.dev/";
+  const configuredUrl = "https://velo.envyrants.workers.dev/";
   let workerOrigin;
 
   try {
