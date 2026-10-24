@@ -22,21 +22,16 @@
 
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
-    let request;
+    let requestUrl;
     try {
-      const requestInput =
-        input instanceof Request
-          ? input
-          : new URL(input, window.location.href).href;
-      request =
-        input instanceof Request
-          ? input
-          : new Request(requestInput, init);
+      requestUrl = new URL(
+        input instanceof Request ? input.url : input,
+        window.location.href,
+      );
     } catch {
       return originalFetch(input, init);
     }
 
-    const requestUrl = new URL(request.url);
     if (
       requestUrl.origin !== window.location.origin ||
       !(
@@ -52,6 +47,8 @@
       `${requestUrl.pathname}${requestUrl.search}`,
       workerOrigin,
     );
-    return originalFetch(new Request(workerUrl, request));
+    return input instanceof Request
+      ? originalFetch(new Request(workerUrl, input))
+      : originalFetch(workerUrl.href, init);
   };
 })();
