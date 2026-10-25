@@ -60,7 +60,7 @@ after(async () => {
 });
 
 test("serves the built app for the root and SPA routes", async () => {
-  for (const pathName of ["/", "/collection"]) {
+  for (const pathName of ["/", "/collection", "/admin"]) {
     const response = await fetch(`${baseUrl}${pathName}`);
     assert.equal(response.status, 200);
     assert.match(await response.text(), /Siteflare app/);
@@ -271,7 +271,9 @@ test("browser bridge sends YouTube OAuth calls to the configured Worker", async 
 
 test("Supabase auth is attached to the existing login route and profile button", async () => {
   const script = await readFile(new URL("./supabase-account.js", import.meta.url), "utf8");
+  const builtScript = await readFile(new URL("./dist/supabase-account.js", import.meta.url), "utf8");
   const index = await readFile(new URL("./dist/index.html", import.meta.url), "utf8");
+  const schema = await readFile(new URL("./supabase.sql", import.meta.url), "utf8");
   assert.match(script, /authRequest\("token\?grant_type=password"/);
   assert.match(script, /authRequest\("signup"/);
   assert.match(script, /\/login/);
@@ -279,6 +281,23 @@ test("Supabase auth is attached to the existing login route and profile button",
   assert.match(script, /id = "vyla-profile-button"/);
   assert.match(script, /storage\/v1\/object\/avatars/);
   assert.match(script, /profiles/);
+  assert.match(script, /#auth-email/);
+  assert.match(script, /@users\.velomusic\.invalid/);
+  assert.match(script, /patchLoginForms\(\);/);
+  assert.doesNotMatch(script, /patchLoginForm\(/);
+  assert.match(script, /input\.placeholder !== "Username"/);
+  assert.match(script, /form\.querySelector\("#auth-username"\)/);
+  assert.match(script, /routeIsAdmin/);
+  assert.match(script, /rpc\/is_admin/);
+  assert.match(script, /renderAdminUsers/);
+  assert.match(script, /renderAdminPlaylists/);
+  assert.match(script, /renderAdminSettings/);
+  assert.match(script, /renderAdminAnnouncements/);
+  assert.match(script, /data-admin-action="user-role"/);
+  assert.doesNotMatch(script, /vyla-supabase-login|#root[^}]*display\s*:\s*none/i);
+  assert.match(schema, /sync_username_login_alias/);
+  assert.match(schema, /Optional one-time migration for accounts created before username-only auth/);
+  assert.equal(builtScript, script);
   assert.doesNotMatch(index, /community\.js/);
   assert.match(index, /supabase-account\.js/);
   await assert.rejects(

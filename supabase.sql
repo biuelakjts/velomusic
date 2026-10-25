@@ -179,6 +179,32 @@ create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.set_updated_at();
 
+create or replace function public.sync_username_login_alias()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.username is distinct from old.username then
+    update auth.users
+    set email = lower(new.username) || '@users.velomusic.invalid',
+        email_confirmed_at = coalesce(email_confirmed_at, now()),
+        updated_at = now()
+    where id = new.id
+      and email is distinct from (lower(new.username) || '@users.velomusic.invalid');
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.sync_username_login_alias() from public, anon, authenticated;
+
+drop trigger if exists profiles_sync_username_login_alias on public.profiles;
+create trigger profiles_sync_username_login_alias
+  after update of username on public.profiles
+  for each row execute function public.sync_username_login_alias();
+
 drop trigger if exists playlists_set_updated_at on public.playlists;
 create trigger playlists_set_updated_at
   before update on public.playlists
@@ -628,4 +654,14 @@ create policy "Users delete their own avatar images"
 
 -- After the first owner account is created, promote it from the SQL editor:
 -- update public.profiles set role = 'admin'
--- where id = (select id from auth.users where email = 'owner@example.com');
+-- where username = 'your_username';
+
+-- Optional one-time migration for accounts created before username-only auth.
+-- This replaces Auth email identifiers with non-deliverable username aliases.
+-- update auth.users u
+-- set email = lower(p.username) || '@users.velomusic.invalid',
+--     email_confirmed_at = coalesce(u.email_confirmed_at, now()),
+--     updated_at = now()
+-- from public.profiles p
+-- where p.id = u.id
+--   and u.email is distinct from (lower(p.username) || '@users.velomusic.invalid');

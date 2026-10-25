@@ -3,60 +3,19 @@
   const SUPABASE_KEY = "sb_publishable_9LPDM6GXY9xeSZ-b6vnufA_tuAwSoCI";
   const AUTH_KEY = "liner_auth_session";
   const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+  let session = readSession();
+  let profile = null;
+  let profileButton;
+  let profileMenu;
+  let feedback = "";
+  let pending = false;
+  let pendingSignup = null;
+  let adminPanel = null;
+  let adminSection = "users";
 
   const style = document.createElement("style");
   style.textContent = `
-    #vyla-supabase-login[hidden], #vyla-profile-menu[hidden] { display:none !important; }
-    #vyla-supabase-login {
-      position:fixed; inset:0; z-index:2147483000; display:grid; place-items:center;
-      overflow:auto; padding:24px; color:#f5f5f7; font:14px Inter,system-ui,sans-serif;
-      background:rgba(12,12,14,.86); backdrop-filter:blur(34px) saturate(135%);
-      -webkit-font-smoothing:antialiased;
-    }
-    #vyla-supabase-login * , #vyla-profile-menu * { box-sizing:border-box; }
-    #vyla-supabase-login .login-card {
-      width:min(760px,100%); display:grid; grid-template-columns:260px 1fr; gap:8px;
-      padding:8px; overflow:hidden; border:1px solid rgba(255,255,255,.09);
-      border-radius:20px; background:rgba(30,30,33,.78);
-      box-shadow:0 24px 80px rgba(0,0,0,.38); backdrop-filter:blur(42px);
-    }
-    #vyla-supabase-login .brand {
-      display:flex; flex-direction:column; justify-content:flex-end; min-height:390px;
-      padding:24px; border:1px solid rgba(255,255,255,.06); border-radius:14px;
-      background:radial-gradient(ellipse at 20% 15%,rgba(35,131,226,.3),transparent 53%),rgba(255,255,255,.025);
-    }
-    #vyla-supabase-login .brand-mark {
-      display:grid; place-items:center; width:38px; height:38px; margin-bottom:auto;
-      border:1px solid rgba(255,255,255,.14); border-radius:12px;
-      color:#fff; background:rgba(35,131,226,.32); font-size:17px; font-weight:700;
-    }
-    #vyla-supabase-login h1 { margin:0 0 9px; font-size:26px; line-height:1.12; letter-spacing:-.045em; }
-    #vyla-supabase-login p { color:#a7a7ad; font-size:12px; line-height:1.55; }
-    #vyla-supabase-login .form-side { padding:22px 26px; }
-    #vyla-supabase-login .tabs { display:flex; gap:4px; padding:4px; margin:0 0 23px; border-radius:9px; background:rgba(0,0,0,.18); }
-    #vyla-supabase-login button { font:inherit; cursor:pointer; }
-    #vyla-supabase-login .tab {
-      flex:1; padding:8px; border:0; border-radius:7px; color:#aaaab1;
-      background:transparent; font-size:12px;
-    }
-    #vyla-supabase-login .tab[aria-selected="true"] { color:#f5f5f7; background:rgba(255,255,255,.1); }
-    #vyla-supabase-login .form { display:grid; gap:13px; }
-    #vyla-supabase-login label { display:grid; gap:6px; color:#c5c5ca; font-size:11px; }
-    #vyla-supabase-login input {
-      width:100%; padding:10px 11px; outline:0; border:1px solid rgba(255,255,255,.11);
-      border-radius:8px; color:#f5f5f7; background:rgba(0,0,0,.17); font:12px Inter,system-ui,sans-serif;
-    }
-    #vyla-supabase-login input:focus { border-color:rgba(35,131,226,.8); }
-    #vyla-supabase-login .submit {
-      padding:10px 14px; border:1px solid rgba(255,255,255,.08); border-radius:8px;
-      color:white; background:#2383e2; font-size:12px; font-weight:600;
-    }
-    #vyla-supabase-login .submit:disabled { opacity:.55; cursor:wait; }
-    #vyla-supabase-login .error {
-      padding:10px 11px; border:1px solid rgba(255,123,139,.3); border-radius:8px;
-      color:#ffd3d7; background:rgba(255,91,111,.09); font-size:12px; line-height:1.5;
-    }
-    #vyla-supabase-login .hint { margin:14px 0 0; font-size:11px; }
+    #vyla-profile-menu[hidden], #vyla-profile-button[hidden] { display:none !important; }
     #vyla-profile-button {
       position:fixed; top:8px; right:14px; z-index:2147482999; display:grid;
       place-items:center; width:38px; height:38px; overflow:hidden; padding:0;
@@ -73,6 +32,7 @@
       box-shadow:0 20px 60px rgba(0,0,0,.4); backdrop-filter:blur(36px) saturate(140%);
       font:12px Inter,system-ui,sans-serif;
     }
+    #vyla-profile-menu *, #vyla-profile-button * { box-sizing:border-box; }
     #vyla-profile-menu h2 { margin:0 0 4px; font-size:16px; letter-spacing:-.02em; }
     #vyla-profile-menu p { color:#a7a7ad; font-size:11px; line-height:1.5; }
     #vyla-profile-menu form { display:grid; gap:10px; }
@@ -89,147 +49,315 @@
     #vyla-profile-menu .actions { display:flex; gap:8px; }
     #vyla-profile-menu .save, #vyla-profile-menu .logout {
       padding:8px 11px; border:1px solid rgba(255,255,255,.1); border-radius:8px;
-      color:#f5f5f7; background:rgba(255,255,255,.07); font-size:11px;
+      color:#f5f5f7; background:rgba(255,255,255,.07); font:11px Inter,system-ui,sans-serif;
+      cursor:pointer;
     }
     #vyla-profile-menu .save { border-color:transparent; background:#2383e2; }
     #vyla-profile-menu .feedback { overflow-wrap:anywhere; }
-    @media(max-width:620px) {
-      #vyla-supabase-login { padding:12px; }
-      #vyla-supabase-login .login-card { grid-template-columns:1fr; max-width:420px; }
-      #vyla-supabase-login .brand { min-height:125px; padding:16px; }
-      #vyla-supabase-login .brand-mark { margin-bottom:20px; }
-      #vyla-supabase-login h1 { font-size:22px; }
-      #vyla-supabase-login .brand p { margin-bottom:0; }
-      #vyla-supabase-login .form-side { padding:16px; }
+    #vyla-profile-menu .admin-link { color:#8ec4ff; text-decoration:none; font-size:11px; }
+    .vyla-auth-feedback {
+      margin:8px 0 0; color:var(--color-accent-primary,#ff6b7a);
+      font-size:12px; font-weight:500; line-height:1.4;
     }
-    @media(prefers-reduced-motion:reduce) {
-      #vyla-supabase-login *, #vyla-profile-menu * { scroll-behavior:auto !important; }
+    #vyla-admin-panel[hidden] { display:none !important; }
+    #vyla-admin-panel {
+      position:fixed; inset:0; z-index:2147483001; overflow:auto; padding:clamp(16px,4vw,48px);
+      color:#f5f5f7; background:#111114; font:13px Inter,system-ui,sans-serif;
     }
+    #vyla-admin-panel * { box-sizing:border-box; }
+    #vyla-admin-panel .admin-shell { width:min(1100px,100%); margin:0 auto; }
+    #vyla-admin-panel .admin-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+    #vyla-admin-panel h1 { margin:0; font-size:26px; letter-spacing:-.04em; }
+    #vyla-admin-panel h2 { margin:0 0 14px; font-size:16px; }
+    #vyla-admin-panel p { color:#a7a7ad; line-height:1.5; }
+    #vyla-admin-panel .admin-tabs { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 16px; }
+    #vyla-admin-panel button, #vyla-admin-panel a {
+      display:inline-flex; align-items:center; justify-content:center; min-height:34px;
+      padding:7px 11px; border:1px solid rgba(255,255,255,.12); border-radius:8px;
+      color:#f5f5f7; background:rgba(255,255,255,.06); font:inherit; text-decoration:none; cursor:pointer;
+    }
+    #vyla-admin-panel button:hover, #vyla-admin-panel a:hover { background:rgba(255,255,255,.12); }
+    #vyla-admin-panel button[aria-selected="true"] { border-color:#398be6; background:#2376c9; }
+    #vyla-admin-panel .admin-card { margin:12px 0; padding:16px; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:#1b1b20; }
+    #vyla-admin-panel .admin-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 0; border-top:1px solid rgba(255,255,255,.08); }
+    #vyla-admin-panel .admin-row:first-child { border-top:0; }
+    #vyla-admin-panel .admin-row p { margin:3px 0 0; font-size:11px; }
+    #vyla-admin-panel .admin-actions { display:flex; flex-wrap:wrap; gap:7px; }
+    #vyla-admin-panel .admin-danger { color:#ff8585; }
+    #vyla-admin-panel form { display:grid; gap:10px; max-width:680px; }
+    #vyla-admin-panel label { display:grid; gap:5px; color:#c5c5ca; font-size:11px; }
+    #vyla-admin-panel input, #vyla-admin-panel textarea, #vyla-admin-panel select {
+      width:100%; padding:9px 10px; border:1px solid rgba(255,255,255,.13); border-radius:8px;
+      outline:0; color:#f5f5f7; background:#131316; font:12px Inter,system-ui,sans-serif;
+    }
+    #vyla-admin-panel textarea { min-height:90px; resize:vertical; }
+    #vyla-admin-panel input:focus, #vyla-admin-panel textarea:focus, #vyla-admin-panel select:focus { border-color:#398be6; }
+    #vyla-admin-panel .admin-error { color:#ff8585; }
+    #vyla-admin-panel .admin-ok { color:#70d89a; }
   `;
   document.head.append(style);
 
-  const login = document.createElement("div");
-  login.id = "vyla-supabase-login";
-  login.hidden = true;
-  login.innerHTML = `
-    <section class="login-card" aria-label="VeloMusic account">
-      <div class="brand"><div class="brand-mark">V</div><h1>Your music,<br>your way.</h1><p>Sign in to your VeloMusic account.</p></div>
-      <div class="form-side">
-        <div class="tabs" role="tablist">
-          <button class="tab" type="button" data-mode="login" aria-selected="true">Sign in</button>
-          <button class="tab" type="button" data-mode="signup" aria-selected="false">Create account</button>
-        </div>
-        <div class="login-form"></div>
-      </div>
-    </section>`;
-  document.body.append(login);
-
-  const profileButton = document.createElement("button");
+  profileButton = document.createElement("button");
   profileButton.id = "vyla-profile-button";
   profileButton.type = "button";
-  profileButton.setAttribute("aria-label", "Open profile");
   profileButton.hidden = true;
+  profileButton.setAttribute("aria-label", "Open profile");
   document.body.append(profileButton);
 
-  const profileMenu = document.createElement("section");
+  profileMenu = document.createElement("section");
   profileMenu.id = "vyla-profile-menu";
   profileMenu.hidden = true;
   profileMenu.setAttribute("aria-label", "Your profile");
   document.body.append(profileMenu);
 
-  let mode = "login";
-  let pending = false;
-  let supabaseSession = readAppSession();
-  let profile = null;
-  let feedback = "";
+  document.addEventListener("submit", onLoginSubmit, true);
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
 
-  login.addEventListener("click", async (event) => {
-    const tab = event.target.closest("[data-mode]");
-    if (tab) {
-      mode = tab.dataset.mode;
-      renderLogin();
+    if (target.closest("[data-setting-reset]")) {
+      window.setTimeout(() => {
+        const keyInput = adminPanel?.querySelector("#admin-setting-form input[name=key]");
+        if (keyInput) keyInput.readOnly = false;
+      }, 0);
+    }
+
+    const form = target.closest("form");
+    if (form?.querySelector("#auth-email")) {
+      const button = target.closest("button");
+      if (button?.type === "button" && !button.hasAttribute("aria-label")) {
+        pendingSignup = null;
+        removeLoginFeedback(form);
+      }
+    }
+
+    if (target.closest("#vyla-profile-button")) {
+      profileMenu.hidden = !profileMenu.hidden;
+      if (!profileMenu.hidden) void loadProfile();
+      return;
+    }
+    if (target.closest("[data-vyla-logout]")) {
+      void signOut();
+      return;
+    }
+    if (!profileMenu.hidden && !profileMenu.contains(target) && target !== profileButton) {
+      profileMenu.hidden = true;
     }
   });
-  login.addEventListener("submit", (event) => {
-    if (!event.target.matches(".form")) return;
-    event.preventDefault();
-    void submitLogin(new FormData(event.target));
-  });
-  profileButton.addEventListener("click", () => {
-    profileMenu.hidden = !profileMenu.hidden;
-    if (!profileMenu.hidden) renderProfileMenu();
-  });
+  document.addEventListener("input", (event) => {
+    const form = event.target instanceof Element ? event.target.closest("form") : null;
+    if (form?.querySelector("#auth-email")) removeLoginFeedback(form);
+  }, true);
+  document.addEventListener("change", (event) => {
+    if (event.target instanceof HTMLInputElement && event.target.name === "avatar") {
+      const file = event.target.files?.[0];
+      if (file && file.size > MAX_AVATAR_BYTES) {
+        feedback = "Profile pictures must be 5 MiB or smaller.";
+        renderProfileMenu();
+      }
+    }
+  }, true);
   profileMenu.addEventListener("submit", (event) => {
     if (!event.target.matches("form")) return;
     event.preventDefault();
     void saveProfile(new FormData(event.target), event.target.elements.avatar.files[0]);
   });
-  profileMenu.addEventListener("click", (event) => {
-    if (event.target.closest("[data-logout]")) void signOut();
-  });
   document.addEventListener("click", (event) => {
-    if (!profileMenu.hidden && !profileMenu.contains(event.target) && event.target !== profileButton) {
-      profileMenu.hidden = true;
+    const target = event.target instanceof Element ? event.target.closest("[data-admin-action]") : null;
+    if (!target || !adminPanel) return;
+    const action = target.dataset.adminAction;
+    if (action === "section") {
+      adminSection = target.dataset.section;
+      void loadAdminSection();
+    } else if (action === "reload") {
+      void loadAdminSection();
+    } else if (action === "user-role") {
+      void updateAdminUser(target.dataset.id, {
+        role: target.dataset.value === "admin" ? "user" : "admin",
+      });
+    } else if (action === "user-suspension") {
+      void updateAdminUser(target.dataset.id, {
+        is_suspended: target.dataset.value !== "true",
+      });
+    } else if (action === "playlist-visibility") {
+      void updateAdminPlaylist(target.dataset.id, {
+        visibility: target.dataset.value === "public" ? "private" : "public",
+      });
+    } else if (action === "playlist-delete") {
+      if (window.confirm("Permanently delete this playlist and its tracks?")) {
+        void deleteAdminRecord("playlists", target.dataset.id);
+      }
+    } else if (action === "setting-edit") {
+      const row = adminPanel.querySelector(`[data-setting-key="${CSS.escape(target.dataset.key)}"]`);
+      const form = adminPanel.querySelector("#admin-setting-form");
+      if (!row || !form) return;
+      form.elements.key.value = row.dataset.key;
+      form.elements.value.value = row.dataset.value;
+      form.elements.is_public.checked = row.dataset.public === "true";
+      form.elements.key.readOnly = true;
+      form.elements.key.focus();
+    } else if (action === "setting-delete") {
+      void deleteAdminRecord("app_settings", target.dataset.key, "key");
+    } else if (action === "announcement-toggle") {
+      void updateAdminAnnouncement(target.dataset.id, { enabled: target.dataset.value !== "true" });
+    } else if (action === "announcement-delete") {
+      if (window.confirm("Permanently delete this announcement?")) {
+        void deleteAdminRecord("announcements", target.dataset.id);
+      }
+    }
+  });
+  document.addEventListener("submit", (event) => {
+    if (!(event.target instanceof HTMLFormElement)) return;
+    if (event.target.id === "admin-setting-form") {
+      event.preventDefault();
+      void saveAdminSetting(new FormData(event.target));
+    } else if (event.target.id === "admin-announcement-form") {
+      event.preventDefault();
+      void createAdminAnnouncement(new FormData(event.target));
     }
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") profileMenu.hidden = true;
   });
-  window.addEventListener("hashchange", updateRoute);
-  window.addEventListener("popstate", updateRoute);
-
-  renderLogin();
-  updateRoute();
-  if (supabaseSession) {
-    void refreshSession()
-      .then(loadProfile)
-      .catch((error) => {
-        console.error("Could not load the Supabase profile:", error);
-        feedback = error.message;
-        renderProfileMenu();
-      });
-  }
-
-  function routeIsLogin() {
-    return window.location.pathname.replace(/\/+$/, "") === "/login"
-      || /(?:^|#)\/login(?:[/?]|$)/.test(window.location.hash);
-  }
-
-  function updateRoute() {
-    const isLogin = routeIsLogin();
-    login.hidden = !isLogin;
-    document.documentElement.classList.toggle("vyla-supabase-login-open", isLogin);
-    let root = document.getElementById("root");
-    if (root) root.style.visibility = isLogin ? "hidden" : "";
-    profileButton.hidden = isLogin || !supabaseSession;
-    if (isLogin) renderLogin();
-    if (!isLogin && supabaseSession) void loadProfile().catch((error) => {
-      console.error("Could not load the Supabase profile:", error);
-      feedback = error.message;
-      renderProfileMenu();
-    });
-  }
-
-  function readAppSession() {
-    try {
-      const session = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
-      return session?.supabaseAccount && session.accessToken && session.refreshToken
-        ? session
-        : null;
-    } catch (error) {
-      console.error("Could not read the account session:", error);
-      return null;
+  window.addEventListener("auth:changed", () => {
+    session = readSession();
+    updateProfileButton();
+  });
+  window.addEventListener("storage", (event) => {
+    if (event.key === AUTH_KEY) {
+      session = readSession();
+      updateProfileButton();
     }
+  });
+
+  updateProfileButton();
+  if (session) void loadProfile();
+  if (routeIsAdmin()) initializeAdmin();
+  const loginObserver = new MutationObserver(() => patchLoginForms());
+  loginObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["type", "placeholder", "autocomplete", "inputmode"],
+  });
+  patchLoginForms();
+
+  async function onLoginSubmit(event) {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    patchLoginForms();
+    const usernameInput = form.querySelector("#auth-email");
+    const signupUsernameInput = form.querySelector("#auth-username");
+    const username = usernameInput?.value.trim().toLowerCase() || "";
+    const password = form.querySelector("#auth-password")?.value || "";
+    const confirmPassword = form.querySelector("#auth-confirm")?.value;
+    const signupUsername = signupUsernameInput?.value.trim().toLowerCase();
+    const displayName = form.querySelector("#auth-display-name")?.value.trim();
+
+    if (signupUsernameInput && displayName !== undefined) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!pendingSignup) {
+        showLoginFeedback(form, "Your signup details expired. Go back and continue again.");
+        return;
+      }
+      if (!isValidUsername(signupUsername)) {
+        showLoginFeedback(form, "Username must be 3–24 characters using letters, numbers, or underscores.");
+        return;
+      }
+      await authenticate(form, "signup", {
+        ...pendingSignup,
+        username: signupUsername,
+        displayName: displayName || signupUsername,
+      });
+      return;
+    }
+
+    if (!usernameInput) return;
+    if (confirmPassword !== undefined) {
+      const loginAlias = accountAlias(username);
+      if (pendingSignup?.alias === loginAlias) {
+        pendingSignup = { ...pendingSignup, password, confirmPassword };
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!isValidUsername(username)) {
+        showLoginFeedback(form, "Username must be 3–24 characters using letters, numbers, or underscores.");
+        return;
+      }
+      pendingSignup = { username, password, confirmPassword, alias: loginAlias };
+      removeLoginFeedback(form);
+      setReactInputValue(usernameInput, loginAlias);
+      window.setTimeout(() => {
+        if (!form.isConnected) return;
+        form.requestSubmit();
+        window.setTimeout(() => {
+          if (usernameInput.isConnected && pendingSignup?.alias === loginAlias) {
+            setInputDisplayValue(usernameInput, username);
+          }
+        }, 0);
+      }, 0);
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    await authenticate(form, "login", { username, password });
   }
 
-  function saveAppSession(session) {
-    supabaseSession = session;
+  async function authenticate(form, kind, data) {
+    if (pending) return;
+    if (!data.username || !data.password) {
+      showLoginFeedback(form, "Enter your username and password.");
+      return;
+    }
+    if (!isValidUsername(data.username)) {
+      showLoginFeedback(form, "Username must be 3–24 characters using letters, numbers, or underscores.");
+      return;
+    }
+    if (kind === "signup" && data.password !== data.confirmPassword) {
+      showLoginFeedback(form, "The passwords do not match.");
+      return;
+    }
+
+    pending = true;
+    const submit = form.querySelector('button[type="submit"]');
+    const previousLabel = submit?.textContent;
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = "Please wait…";
+    }
+    removeLoginFeedback(form);
     try {
-      if (session) localStorage.setItem(AUTH_KEY, JSON.stringify(session));
-      else localStorage.removeItem(AUTH_KEY);
+      const result = kind === "login"
+        ? await authRequest("token?grant_type=password", {
+          email: accountAlias(data.username),
+          password: data.password,
+        })
+        : await authRequest("signup", {
+          email: accountAlias(data.username),
+          password: data.password,
+          data: { username: data.username, display_name: data.displayName },
+        });
+      if (!result.access_token || !result.refresh_token || !result.user) {
+        throw new Error("Supabase did not return a session. Disable email confirmation in Supabase Authentication settings, then try again.");
+      }
+      session = toAppSession(result);
+      localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+      pendingSignup = null;
+      window.dispatchEvent(new Event("auth:changed"));
+      const next = new URLSearchParams(window.location.search).get("next");
+      window.location.assign(next?.startsWith("/") && !next.startsWith("//") ? next : "/");
     } catch (error) {
-      console.error("Could not save the account session:", error);
-      throw new Error("This browser could not save your sign-in. Check its storage settings.");
+      console.error("Supabase authentication failed:", error);
+      showLoginFeedback(form, error.message);
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = previousLabel;
+      }
+    } finally {
+      pending = false;
     }
   }
 
@@ -244,78 +372,6 @@
       throw new Error(result.msg || result.message || result.error_description || result.error || `Supabase authentication failed (${response.status})`);
     }
     return result;
-  }
-
-  function saveLoginForm() {
-    const form = login.querySelector(".form");
-    return form ? new FormData(form) : new FormData();
-  }
-
-  function renderLogin() {
-    for (const tab of login.querySelectorAll("[data-mode]")) {
-      tab.setAttribute("aria-selected", String(tab.dataset.mode === mode));
-    }
-    const fields = mode === "signup"
-      ? `<label>Username<input name="username" autocomplete="username" pattern="[A-Za-z0-9_]{3,24}" minlength="3" maxlength="24" required placeholder="music_fan"></label>
-         <label>Display name<input name="display_name" maxlength="60" required placeholder="Your name"></label>`
-      : "";
-    const email = saveLoginForm().get("email") || "";
-    login.querySelector(".login-form").innerHTML = `
-      ${feedback ? `<div class="error" role="alert">${escapeHtml(feedback)}</div>` : ""}
-      <form class="form">
-        <label>Email address<input name="email" type="email" autocomplete="email" required maxlength="254" value="${escapeHtml(email)}"></label>
-        ${fields}
-        <label>Password<input name="password" type="password" autocomplete="${mode === "login" ? "current-password" : "new-password"}" minlength="8" required></label>
-        ${mode === "signup" ? `<label>Confirm password<input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label>` : ""}
-        <button class="submit" type="submit" ${pending ? "disabled" : ""}>${pending ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
-      </form>
-      <p class="hint">${mode === "signup" ? "Email confirmation must be disabled in Supabase Authentication settings if you want to sign up without a confirmation email." : "Your VeloMusic account uses Supabase authentication."}</p>`;
-  }
-
-  async function submitLogin(data) {
-    if (pending) return;
-    const email = String(data.get("email") || "").trim().toLowerCase();
-    const password = String(data.get("password") || "");
-    if (!email || !password) {
-      feedback = "Enter your email and password.";
-      renderLogin();
-      return;
-    }
-    if (mode === "signup" && password !== data.get("confirm_password")) {
-      feedback = "The passwords do not match.";
-      renderLogin();
-      return;
-    }
-    pending = true;
-    feedback = "";
-    renderLogin();
-    try {
-      const result = mode === "login"
-        ? await authRequest("token?grant_type=password", { email, password })
-        : await authRequest("signup", {
-          email,
-          password,
-          data: {
-            username: String(data.get("username") || "").trim().toLowerCase(),
-            display_name: String(data.get("display_name") || "").trim(),
-          },
-        });
-      if (!result.access_token || !result.refresh_token || !result.user) {
-        throw new Error("Supabase did not return a signed-in session. Disable email confirmation under Authentication → Providers → Email, then try again.");
-      }
-      const appSession = toAppSession(result);
-      saveAppSession(appSession);
-      supabaseSession = appSession;
-      profile = null;
-      feedback = "";
-      await loadProfile();
-      window.location.assign("/");
-    } catch (error) {
-      console.error("Supabase sign-in failed:", error);
-      feedback = error.message;
-      pending = false;
-      renderLogin();
-    }
   }
 
   function toAppSession(result) {
@@ -337,24 +393,35 @@
     };
   }
 
+  function readSession() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+      return stored?.supabaseAccount && stored.accessToken && stored.refreshToken
+        ? stored
+        : null;
+    } catch (error) {
+      console.error("Could not read the Supabase session:", error);
+      return null;
+    }
+  }
+
   async function refreshSession() {
-    if (!supabaseSession) return null;
-    const expiry = Number(supabaseSession.accessTokenExpiresAt || 0);
-    if (expiry > Date.now() + 60000) return supabaseSession;
+    if (!session) throw new Error("Sign in to manage your profile.");
+    const expiresAt = Number(session.accessTokenExpiresAt || 0);
+    if (expiresAt > Date.now() + 60000) return;
     const refreshed = await authRequest("token?grant_type=refresh_token", {
-      refresh_token: supabaseSession.refreshToken,
+      refresh_token: session.refreshToken,
     });
-    const nextSession = toAppSession(refreshed);
-    saveAppSession(nextSession);
-    return nextSession;
+    session = toAppSession(refreshed);
+    localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+    window.dispatchEvent(new Event("auth:changed"));
   }
 
   async function rest(table, { method = "GET", query = "", body, prefer } = {}) {
     await refreshSession();
-    if (!supabaseSession) throw new Error("Sign in again to manage your profile.");
     const headers = {
       apikey: SUPABASE_KEY,
-      authorization: `Bearer ${supabaseSession.accessToken}`,
+      authorization: `Bearer ${session.accessToken}`,
       "content-type": "application/json",
     };
     if (prefer) headers.prefer = prefer;
@@ -375,62 +442,315 @@
   }
 
   async function loadProfile() {
-    if (!supabaseSession) return null;
-    const rows = await rest("profiles", {
-      query: `id=eq.${encodeURIComponent(supabaseSession.user.id)}&select=*`,
-    });
-    profile = rows?.[0] || null;
-    feedback = profile ? "" : "Your account is signed in, but its profile row is missing. Run supabase.sql and try again.";
-    profileButton.hidden = routeIsLogin();
-    renderProfileButton();
-    if (!profileMenu.hidden) renderProfileMenu();
-    return profile;
+    if (!session) return;
+    try {
+      const rows = await rest("profiles", {
+        query: `id=eq.${encodeURIComponent(session.user.id)}&select=*`,
+      });
+      profile = rows?.[0] || null;
+      feedback = profile ? "" : "Your Supabase account has no profile yet. Run supabase.sql to create the profile trigger.";
+    } catch (error) {
+      console.error("Could not load the Supabase profile:", error);
+      feedback = error.message;
+    }
+    updateProfileButton();
+    renderProfileMenu();
   }
 
-  function renderProfileButton() {
-    const label = profile?.display_name || profile?.username || supabaseSession?.user?.displayName || "Profile";
-    const url = profile?.avatar_path ? avatarUrl(profile.avatar_path) : "";
-    profileButton.setAttribute("aria-label", `Open profile for ${label}`);
+  function updateProfileButton() {
+    profileButton.hidden = !session || routeIsLogin();
+    if (!session) return;
+    const label = profile?.display_name || profile?.username || session.user.displayName || "Profile";
+    const src = profile?.avatar_path ? avatarUrl(profile.avatar_path) : null;
     profileButton.title = label;
-    profileButton.innerHTML = url
-      ? `<img src="${escapeHtml(url)}" alt="">`
+    profileButton.setAttribute("aria-label", `Open profile for ${label}`);
+    profileButton.innerHTML = src
+      ? `<img src="${escapeHtml(src)}" alt="">`
       : escapeHtml((label.trim()[0] || "V").toUpperCase());
   }
 
-  function renderProfileMenu() {
-    if (!supabaseSession) {
-      profileMenu.innerHTML = `<h2>Profile</h2><p>Sign in at <a href="/login" style="color:#8dc8ff">/login</a> to set up your profile.</p>`;
+  function routeIsLogin() {
+    return window.location.pathname.replace(/\/+$/, "") === "/login"
+      || /(?:^|#)\/login(?:[/?]|$)/.test(window.location.hash);
+  }
+
+  function routeIsAdmin() {
+    return window.location.pathname.replace(/\/+$/, "") === "/admin";
+  }
+
+  function patchLoginForms() {
+    document.querySelectorAll("form").forEach((form) => {
+      const input = form.querySelector("#auth-email");
+      if (!input) return;
+      if (input.type !== "text") input.type = "text";
+      if (input.inputMode !== "text") input.inputMode = "text";
+      if (input.autocomplete !== "username") input.autocomplete = "username";
+      if (input.placeholder !== "Username") input.placeholder = "Username";
+      input.setAttribute("aria-label", "Username");
+      if (pendingSignup?.alias && form.querySelector("#auth-confirm") && input.value === pendingSignup.alias) {
+        setInputDisplayValue(input, pendingSignup.username);
+      }
+      const label = form.querySelector('label[for="auth-email"]');
+      if (label && label.textContent.trim() !== "Username") label.textContent = "Username";
+    });
+  }
+
+  function accountAlias(username) {
+    return `${String(username).trim().toLowerCase()}@users.velomusic.invalid`;
+  }
+
+  function isValidUsername(username) {
+    return /^[a-z0-9_]{3,24}$/i.test(String(username || ""));
+  }
+
+  function setReactInputValue(input, value) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    if (!setter) throw new Error("Could not prepare the signup form.");
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function setInputDisplayValue(input, value) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    if (setter) setter.call(input, value);
+  }
+
+  function initializeAdmin() {
+    adminPanel = document.createElement("main");
+    adminPanel.id = "vyla-admin-panel";
+    document.body.append(adminPanel);
+    renderAdminMessage("Checking administrator access…");
+    if (!session) {
+      renderAdminMessage(
+        "Sign in with an administrator account to open this page.",
+        `<a href="/login?next=%2Fadmin">Go to login</a>`,
+      );
       return;
     }
-    const displayName = profile?.display_name || supabaseSession.user.displayName || "";
-    const username = profile?.username || supabaseSession.user.username || "";
-    const avatar = profile?.avatar_path ? avatarUrl(profile.avatar_path) : "";
+    void loadAdminSection();
+  }
+
+  function renderAdminMessage(message, action = "") {
+    if (!adminPanel) return;
+    adminPanel.innerHTML = `<div class="admin-shell"><div class="admin-card"><h1>Vyla Admin</h1><p>${escapeHtml(message)}</p>${action}</div></div>`;
+  }
+
+  async function loadAdminSection(notice = "") {
+    if (!adminPanel || !session) return;
+    adminPanel.innerHTML = `<div class="admin-shell"><p>Loading admin tools…</p></div>`;
+    try {
+      const authorized = await rest("rpc/is_admin", { method: "POST", body: {} });
+      if (authorized !== true) {
+        renderAdminMessage(
+          "Access denied. This Supabase account is not an active administrator.",
+          `<a href="/">Back to Vyla</a>`,
+        );
+        return;
+      }
+      const sections = {
+        users: ["profiles", "select=id,username,display_name,role,is_suspended,created_at&order=created_at.desc&limit=200"],
+        playlists: ["playlists", "select=id,title,owner_id,visibility,created_at&order=created_at.desc&limit=200"],
+        settings: ["app_settings", "select=key,value,is_public,updated_at&order=key.asc&limit=200"],
+        announcements: ["announcements", "select=id,message,enabled,starts_at,ends_at,created_at&order=created_at.desc&limit=200"],
+      };
+      const [table, query] = sections[adminSection] || sections.users;
+      const rows = await rest(table, { query });
+      renderAdminPage(adminSection, rows || [], notice);
+    } catch (error) {
+      console.error("Could not load the admin console:", error);
+      renderAdminMessage(
+        `Admin console could not load: ${error.message}`,
+        `<a href="/">Back to Vyla</a><button type="button" data-admin-action="reload">Retry</button>`,
+      );
+    }
+  }
+
+  function renderAdminPage(section, rows, notice) {
+    const tabs = [
+      ["users", "Users"],
+      ["playlists", "Playlists"],
+      ["settings", "App settings"],
+      ["announcements", "Announcements"],
+    ];
+    const content = section === "users" ? renderAdminUsers(rows)
+      : section === "playlists" ? renderAdminPlaylists(rows)
+        : section === "settings" ? renderAdminSettings(rows)
+          : renderAdminAnnouncements(rows);
+    adminPanel.innerHTML = `
+      <div class="admin-shell">
+        <header class="admin-head"><div><h1>Vyla Admin</h1><p>Signed in as @${escapeHtml(profile?.username || session.user.username)}</p></div><a href="/">Back to Vyla</a></header>
+        <nav class="admin-tabs" aria-label="Admin sections">
+          ${tabs.map(([id, label]) => `<button type="button" data-admin-action="section" data-section="${id}" aria-selected="${id === section}">${label}</button>`).join("")}
+          <button type="button" data-admin-action="reload">Refresh</button>
+        </nav>
+        ${notice ? `<p class="admin-ok" role="status">${escapeHtml(notice)}</p>` : ""}
+        <section class="admin-card">${content}</section>
+      </div>`;
+  }
+
+  function renderAdminUsers(rows) {
+    return `<h2>Accounts</h2><p>Manage roles and access. Admin access is still enforced by Supabase RLS.</p>
+      ${rows.map((user) => `<div class="admin-row">
+        <div><strong>@${escapeHtml(user.username)}</strong><p>${escapeHtml(user.display_name || "No display name")} · ${user.role === "admin" ? "Admin" : "User"}${user.is_suspended ? " · Suspended" : ""}</p></div>
+        <div class="admin-actions">
+          <button type="button" data-admin-action="user-role" data-id="${escapeHtml(user.id)}" data-value="${escapeHtml(user.role)}"${user.id === session.user.id ? " disabled title=\"You cannot change your own role here\"" : ""}>${user.role === "admin" ? "Remove admin" : "Make admin"}</button>
+          <button type="button" data-admin-action="user-suspension" data-id="${escapeHtml(user.id)}" data-value="${user.is_suspended}"${user.id === session.user.id ? " disabled title=\"You cannot suspend your own account here\"" : ""}>${user.is_suspended ? "Restore access" : "Suspend"}</button>
+        </div>
+      </div>`).join("") || "<p>No accounts found.</p>"}`;
+  }
+
+  function renderAdminPlaylists(rows) {
+    return `<h2>Playlists</h2><p>Change playlist visibility or remove content. Deleting a playlist also deletes its tracks.</p>
+      ${rows.map((playlist) => `<div class="admin-row">
+        <div><strong>${escapeHtml(playlist.title)}</strong><p>Owner ${escapeHtml(playlist.owner_id)} · ${escapeHtml(playlist.visibility)}</p></div>
+        <div class="admin-actions">
+          <button type="button" data-admin-action="playlist-visibility" data-id="${escapeHtml(playlist.id)}" data-value="${escapeHtml(playlist.visibility)}">Make ${playlist.visibility === "public" ? "private" : "public"}</button>
+          <button class="admin-danger" type="button" data-admin-action="playlist-delete" data-id="${escapeHtml(playlist.id)}">Delete</button>
+        </div>
+      </div>`).join("") || "<p>No playlists found.</p>"}`;
+  }
+
+  function renderAdminSettings(rows) {
+    return `<h2>App settings</h2>
+      <form id="admin-setting-form">
+        <label>Key<input name="key" minlength="1" maxlength="100" required></label>
+        <label>Value (JSON)<textarea name="value" required placeholder='{"enabled":true}'></textarea></label>
+        <label><span><input name="is_public" type="checkbox" style="width:auto"> Publicly readable</span></label>
+        <div><button type="submit">Save setting</button><button type="reset" data-setting-reset>New setting</button></div>
+      </form>
+      ${rows.map((setting) => `<div class="admin-row" data-setting-key="${escapeHtml(setting.key)}" data-value="${escapeHtml(JSON.stringify(setting.value))}" data-public="${setting.is_public}">
+        <div><strong>${escapeHtml(setting.key)}</strong><p>${setting.is_public ? "Public" : "Admin only"} · ${escapeHtml(JSON.stringify(setting.value))}</p></div>
+        <div class="admin-actions"><button type="button" data-admin-action="setting-edit" data-key="${escapeHtml(setting.key)}">Edit</button><button class="admin-danger" type="button" data-admin-action="setting-delete" data-key="${escapeHtml(setting.key)}">Delete</button></div>
+      </div>`).join("") || "<p>No app settings have been saved.</p>"}`;
+  }
+
+  function renderAdminAnnouncements(rows) {
+    return `<h2>Announcements</h2>
+      <form id="admin-announcement-form">
+        <label>Message<textarea name="message" minlength="1" maxlength="2000" required></textarea></label>
+        <label>Starts at (optional)<input name="starts_at" type="datetime-local"></label>
+        <label>Ends at (optional)<input name="ends_at" type="datetime-local"></label>
+        <label><span><input name="enabled" type="checkbox" style="width:auto" checked> Enabled</span></label>
+        <button type="submit">Create announcement</button>
+      </form>
+      ${rows.map((announcement) => `<div class="admin-row">
+        <div><strong>${escapeHtml(announcement.message)}</strong><p>${announcement.enabled ? "Enabled" : "Disabled"}${announcement.starts_at ? ` · Starts ${escapeHtml(new Date(announcement.starts_at).toLocaleString())}` : ""}${announcement.ends_at ? ` · Ends ${escapeHtml(new Date(announcement.ends_at).toLocaleString())}` : ""}</p></div>
+        <div class="admin-actions"><button type="button" data-admin-action="announcement-toggle" data-id="${escapeHtml(announcement.id)}" data-value="${announcement.enabled}">${announcement.enabled ? "Disable" : "Enable"}</button><button class="admin-danger" type="button" data-admin-action="announcement-delete" data-id="${escapeHtml(announcement.id)}">Delete</button></div>
+      </div>`).join("") || "<p>No announcements yet.</p>"}`;
+  }
+
+  async function updateAdminUser(id, changes) {
+    if (id === session?.user.id && Object.hasOwn(changes, "role")) {
+      return loadAdminSection("Your own administrator role cannot be changed here.");
+    }
+    await adminMutation("profiles", `id=eq.${encodeURIComponent(id)}`, changes, "PATCH");
+  }
+
+  async function updateAdminPlaylist(id, changes) {
+    await adminMutation("playlists", `id=eq.${encodeURIComponent(id)}`, changes, "PATCH");
+  }
+
+  async function updateAdminAnnouncement(id, changes) {
+    await adminMutation("announcements", `id=eq.${encodeURIComponent(id)}`, changes, "PATCH");
+  }
+
+  async function deleteAdminRecord(table, value, column = "id") {
+    try {
+      await rest(table, {
+        method: "DELETE",
+        query: `${column}=eq.${encodeURIComponent(value)}`,
+        prefer: "return=minimal",
+      });
+      await loadAdminSection("Deleted.");
+    } catch (error) {
+      console.error(`Could not delete admin record from ${table}:`, error);
+      await loadAdminSection(`Could not delete item: ${error.message}`);
+    }
+  }
+
+  async function adminMutation(table, query, changes, method = "PATCH") {
+    try {
+      await rest(table, { method, query, body: changes, prefer: "return=representation" });
+      await loadAdminSection("Changes saved.");
+    } catch (error) {
+      console.error(`Could not update admin record in ${table}:`, error);
+      await loadAdminSection(`Could not save changes: ${error.message}`);
+    }
+  }
+
+  async function saveAdminSetting(data) {
+    try {
+      const key = String(data.get("key") || "").trim();
+      const value = JSON.parse(String(data.get("value") || ""));
+      if (!key || key.length > 100) throw new Error("Setting keys must contain 1–100 characters.");
+      await rest("app_settings", {
+        method: "POST",
+        query: "on_conflict=key",
+        body: { key, value, is_public: data.get("is_public") === "on", updated_by: session.user.id },
+        prefer: "resolution=merge-duplicates,return=representation",
+      });
+      await loadAdminSection("Setting saved.");
+    } catch (error) {
+      console.error("Could not save app setting:", error);
+      await loadAdminSection(`Could not save setting: ${error.message}`);
+    }
+  }
+
+  async function createAdminAnnouncement(data) {
+    try {
+      const startsAt = String(data.get("starts_at") || "");
+      const endsAt = String(data.get("ends_at") || "");
+      await rest("announcements", {
+        method: "POST",
+        body: {
+          message: String(data.get("message") || "").trim(),
+          enabled: data.get("enabled") === "on",
+          starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+          created_by: session.user.id,
+        },
+        prefer: "return=representation",
+      });
+      await loadAdminSection("Announcement created.");
+    } catch (error) {
+      console.error("Could not create announcement:", error);
+      await loadAdminSection(`Could not create announcement: ${error.message}`);
+    }
+  }
+
+  function renderProfileMenu() {
+    if (!session) {
+      profileMenu.innerHTML = `<h2>Profile</h2><p>Sign in to edit your profile.</p>`;
+      return;
+    }
+    const name = profile?.display_name || session.user.displayName || "";
+    const username = profile?.username || session.user.username || "";
+    const src = profile?.avatar_path ? avatarUrl(profile.avatar_path) : initialsAvatar(name || username);
     profileMenu.innerHTML = `
       <div class="avatar-row">
-        <img class="avatar-preview" src="${escapeHtml(avatar || initialsAvatar(displayName || username))}" alt="">
-        <div><h2>${escapeHtml(displayName || username || "Your profile")}</h2><p>@${escapeHtml(username)}</p></div>
+        <img class="avatar-preview" src="${escapeHtml(src)}" alt="">
+        <div><h2>${escapeHtml(name || username || "Your profile")}</h2><p>@${escapeHtml(username)}</p></div>
       </div>
       ${feedback ? `<p class="feedback">${escapeHtml(feedback)}</p>` : ""}
+      ${profile?.role === "admin" && !profile.is_suspended ? `<p><a class="admin-link" href="/admin">Open admin console</a></p>` : ""}
       <form>
         <label>Profile picture<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label>
         <label>Username<input name="username" value="${escapeHtml(username)}" pattern="[A-Za-z0-9_]{3,24}" minlength="3" maxlength="24" required></label>
-        <label>Display name<input name="display_name" value="${escapeHtml(displayName)}" maxlength="60"></label>
+        <label>Display name<input name="display_name" value="${escapeHtml(name)}" maxlength="60"></label>
         <label>Bio<textarea name="bio" maxlength="500">${escapeHtml(profile?.bio || "")}</textarea></label>
-        <div class="actions"><button class="save" type="submit">Save profile</button><button class="logout" type="button" data-logout>Sign out</button></div>
+        <div class="actions"><button class="save" type="submit">Save profile</button><button class="logout" type="button" data-vyla-logout>Sign out</button></div>
       </form>`;
   }
 
   async function saveProfile(data, file) {
-    const saveButton = profileMenu.querySelector(".save");
-    if (saveButton) saveButton.disabled = true;
     feedback = "";
     try {
-      if (!profile) throw new Error("Profile is not available yet. Run supabase.sql if the profiles table has not been created.");
+      if (!profile) throw new Error("Profile is not available. Run supabase.sql before editing your profile.");
       let avatarPath = profile.avatar_path;
       if (file) avatarPath = await uploadAvatar(file);
       const rows = await rest("profiles", {
         method: "PATCH",
-        query: `id=eq.${encodeURIComponent(supabaseSession.user.id)}&select=*`,
+        query: `id=eq.${encodeURIComponent(session.user.id)}&select=*`,
         body: {
           username: String(data.get("username") || "").trim().toLowerCase(),
           display_name: String(data.get("display_name") || "").trim(),
@@ -441,32 +761,31 @@
       });
       profile = rows?.[0] || profile;
       feedback = "Profile saved.";
-      renderProfileButton();
     } catch (error) {
-      console.error("Could not save the Supabase profile:", error);
+      console.error("Could not save the profile:", error);
       feedback = error.message;
-    } finally {
-      renderProfileMenu();
     }
+    updateProfileButton();
+    renderProfileMenu();
   }
 
   async function uploadAvatar(file) {
-    const supportedTypes = new Map([
-      ["image/jpeg", "jpg"],
-      ["image/png", "png"],
-      ["image/webp", "webp"],
-      ["image/gif", "gif"],
-    ]);
-    const extension = supportedTypes.get(file.type);
+    const extensions = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+      "image/gif": "gif",
+    };
+    const extension = extensions[file.type];
     if (!extension) throw new Error("Choose a JPEG, PNG, WebP, or GIF image.");
     if (file.size > MAX_AVATAR_BYTES) throw new Error("Profile pictures must be 5 MiB or smaller.");
-    const path = `${supabaseSession.user.id}/avatar-${Date.now()}.${extension}`;
     await refreshSession();
+    const path = `${session.user.id}/avatar-${Date.now()}.${extension}`;
     const response = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
       method: "POST",
       headers: {
         apikey: SUPABASE_KEY,
-        authorization: `Bearer ${supabaseSession.accessToken}`,
+        authorization: `Bearer ${session.accessToken}`,
         "content-type": file.type,
         "x-upsert": "true",
       },
@@ -478,28 +797,37 @@
   }
 
   async function signOut() {
-    let revokeError = null;
     try {
       await refreshSession();
       const response = await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
         method: "POST",
-        headers: {
-          apikey: SUPABASE_KEY,
-          authorization: `Bearer ${supabaseSession.accessToken}`,
-        },
+        headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${session.accessToken}` },
       });
       if (!response.ok) throw new Error(`Supabase sign-out failed (${response.status}).`);
     } catch (error) {
-      console.error("Could not revoke the Supabase session:", error);
-      revokeError = error;
+      console.error("Could not revoke Supabase session:", error);
+    } finally {
+      localStorage.removeItem(AUTH_KEY);
+      session = null;
+      profile = null;
+      window.dispatchEvent(new Event("auth:changed"));
+      window.location.assign("/login");
     }
-    saveAppSession(null);
-    supabaseSession = null;
-    profile = null;
-    profileMenu.hidden = true;
-    profileButton.hidden = true;
-    feedback = revokeError ? `Signed out on this device; server revocation failed: ${revokeError.message}` : "";
-    window.location.assign("/login");
+  }
+
+  function showLoginFeedback(form, message) {
+    removeLoginFeedback(form);
+    const feedbackNode = document.createElement("p");
+    feedbackNode.className = "vyla-auth-feedback";
+    feedbackNode.setAttribute("role", "alert");
+    feedbackNode.textContent = message;
+    const passwordField = form.querySelector("#auth-password")?.closest("div");
+    if (passwordField) passwordField.after(feedbackNode);
+    else form.append(feedbackNode);
+  }
+
+  function removeLoginFeedback(form) {
+    form.querySelectorAll(".vyla-auth-feedback").forEach((node) => node.remove());
   }
 
   function avatarUrl(path) {
@@ -507,8 +835,8 @@
   }
 
   function initialsAvatar(label) {
-    const initials = escapeHtml((label.trim()[0] || "V").toUpperCase());
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" rx="48" fill="#29292e"/><text x="48" y="59" text-anchor="middle" font-family="Arial,sans-serif" font-size="42" font-weight="600" fill="#f5f5f7">${initials}</text></svg>`;
+    const initial = escapeHtml((label.trim()[0] || "V").toUpperCase());
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" rx="48" fill="#29292e"/><text x="48" y="59" text-anchor="middle" font-family="Arial,sans-serif" font-size="42" font-weight="600" fill="#f5f5f7">${initial}</text></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   }
 
