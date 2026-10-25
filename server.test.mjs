@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { runInNewContext } from "node:vm";
 import { after, before, test } from "node:test";
 import { createSiteflareServer } from "./server.mjs";
 import { handleRequest as handleWorkerRequest } from "./worker.js";
@@ -179,4 +180,91 @@ test("Worker CORS allows the frontend x-origin header", async () => {
 
   assert.equal(response.status, 204);
   assert.match(response.headers.get("access-control-allow-headers"), /x-origin/i);
+});
+
+test("Worker proxies YouTube device authorization through the CORS-enabled auth route", async () => {
+  let upstreamRequest;
+  const response = await handleWorkerRequest(
+    new Request("https://worker.example/youtube-auth/device/code", {
+      method: "POST",
+      headers: {
+        origin: "https://music.example",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ client_id: "public-client-id" }),
+    }),
+    async (url, options) => {
+      upstreamRequest = { url: String(url), options };
+      return new Response(JSON.stringify({ device_code: "code", user_code: "ABCD" }), {
+        headers: { "content-type": "application/json" },
+      });
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.deepEqual(await response.json(), { device_code: "code", user_code: "ABCD" });
+  assert.equal(
+    upstreamRequest.url,
+    "https://www.youtube.com/o/oauth2/device/code",
+  );
+  assert.equal(upstreamRequest.options.method, "POST");
+});
+
+test("Worker preflights YouTube auth requests and rejects arbitrary player scripts", async () => {
+  const preflight = await handleWorkerRequest(
+    new Request("https://worker.example/youtube-auth/token", {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://music.example",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type",
+      },
+    }),
+  );
+  assert.equal(preflight.status, 204);
+  assert.match(preflight.headers.get("access-control-allow-headers"), /content-type/i);
+
+  let upstreamCalled = false;
+  const invalidScript = await handleWorkerRequest(
+    new Request(
+      "https://worker.example/youtube-auth/player-script?path=%2Frobots.txt",
+    ),
+    async () => {
+      upstreamCalled = true;
+      return new Response("unexpected");
+    },
+  );
+  assert.equal(invalidScript.status, 400);
+  assert.equal(upstreamCalled, false);
+});
+
+test("browser bridge sends YouTube OAuth calls to the configured Worker", async () => {
+  const script = await readFile(new URL("./workeradd.js", import.meta.url), "utf8");
+  let forwarded;
+  const window = {
+    location: { href: "https://music.example/" },
+    fetch(input, options) {
+      forwarded = { input: String(input), options };
+      return Promise.resolve(new Response("ok"));
+    },
+  };
+  runInNewContext(script, {
+    window,
+    self: {},
+    URL,
+    Request,
+    console,
+  });
+
+  await window.fetch("https://www.youtube.com/o/oauth2/device/code", {
+    method: "POST",
+    body: "{}",
+  });
+  assert.equal(
+    forwarded.input,
+    "https://velo.envyrants.workers.dev/youtube-auth/device/code",
+  );
+  assert.equal(forwarded.options.method, "POST");
+  assert.equal(forwarded.options.body, "{}");
 });

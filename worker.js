@@ -11,6 +11,22 @@ const ALLOWED_MEDIA_HOSTS = [
   /^[a-f0-9]{32}\.r2\.cloudflarestorage\.com$/i,
 ];
 
+const YOUTUBE_AUTH_ENDPOINTS = new Map([
+  ["tv", { method: "GET", url: "https://www.youtube.com/tv" }],
+  [
+    "device/code",
+    { method: "POST", url: "https://www.youtube.com/o/oauth2/device/code" },
+  ],
+  [
+    "token",
+    { method: "POST", url: "https://www.youtube.com/o/oauth2/token" },
+  ],
+  [
+    "revoke",
+    { method: "POST", url: "https://www.youtube.com/o/oauth2/revoke" },
+  ],
+]);
+
 const CORS_REQUEST_HEADERS = [
   "accept",
   "authorization",
@@ -144,6 +160,61 @@ async function proxyVisitorData(request, fetchImpl) {
   );
 }
 
+async function proxyYoutubeAuthRequest(request, url, fetchImpl) {
+  if (request.method === "OPTIONS") {
+    return responseWithCors(new Response(null, { status: 204 }), request);
+  }
+
+  const endpoint = url.pathname.slice("/youtube-auth/".length);
+  let target;
+  if (endpoint === "player-script") {
+    if (request.method !== "GET") {
+      return textResponse("Method not allowed", 405, request);
+    }
+    const playerPath = url.searchParams.get("path") || "";
+    if (!/^\/s\/player\/[a-zA-Z0-9_./-]+\.js$/.test(playerPath) || playerPath.split("/").includes("..")) {
+      return textResponse("Player script path is not allowed", 400, request);
+    }
+    target = new URL(playerPath, "https://www.youtube.com");
+  } else {
+    const config = YOUTUBE_AUTH_ENDPOINTS.get(endpoint);
+    if (!config) return textResponse("Not found", 404, request);
+    if (request.method !== config.method) {
+      return textResponse("Method not allowed", 405, request);
+    }
+    target = new URL(config.url);
+  }
+
+  const headers = new Headers();
+  for (const name of ["accept", "content-type", "accept-language"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  headers.set(
+    "user-agent",
+    endpoint === "tv"
+      ? "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version"
+      : "Mozilla/5.0",
+  );
+  headers.set("referer", "https://www.youtube.com/tv");
+
+  const upstream = await fetchImpl(target, {
+    method: request.method,
+    headers,
+    body: request.method === "POST" ? request.body : undefined,
+  });
+  return responseWithCors(
+    new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        "content-type": upstream.headers.get("content-type") || "application/json",
+        "cache-control": "no-store",
+      },
+    }),
+    request,
+  );
+}
+
 async function proxyMediaRequest(request, url, fetchImpl) {
   if (request.method === "OPTIONS") {
     return responseWithCors(new Response(null, { status: 204 }), request);
@@ -219,6 +290,9 @@ export async function handleRequest(request, fetchImpl = fetch) {
   try {
     if (url.pathname.startsWith("/youtube/")) {
       return await proxyYoutubeRequest(request, url, fetchImpl);
+    }
+    if (url.pathname.startsWith("/youtube-auth/")) {
+      return await proxyYoutubeAuthRequest(request, url, fetchImpl);
     }
     if (url.pathname === "/youtube-visitor-data") {
       return await proxyVisitorData(request, fetchImpl);
