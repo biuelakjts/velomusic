@@ -51868,7 +51868,6 @@ function SettingsModal() {
         Playback: e(`settings.tabs.playback`),
         Shortcuts: e(`settings.tabs.shortcuts`) || `Shortcuts`,
         Overlay: e(`settings.tabs.overlay`) || `Overlay`,
-        Discord: e(`settings.tabs.discord`) || `Discord RPC`,
         Youtube: e(`settings.tabs.youtube`) || `YouTube`,
         Appearance: e(`settings.tabs.appearance`),
         Storage: e(`settings.tabs.storage`),
@@ -52062,7 +52061,7 @@ function SettingsModal() {
                         children: [(0,
                         import_jsx_runtime.jsxs)(`button`, {
                             type: `button`,
-                            onClick: () => S(`https://github.com/tryliner/desktop/blob/main/README.md`),
+                            onClick: () => S(`https://tryvelo.onrender.com/#/docs`),
                             className: `w-full flex items-center gap-[10px] px-[10px] py-[7px] rounded-[10px] border-0 bg-transparent text-text-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:text-text-primary cursor-pointer text-left transition-colors`,
                             style: {
                                 ...font,
