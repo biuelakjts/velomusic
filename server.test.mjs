@@ -268,3 +268,11 @@ test("browser bridge sends YouTube OAuth calls to the configured Worker", async 
   assert.equal(forwarded.options.method, "POST");
   assert.equal(forwarded.options.body, "{}");
 });
+
+test("community panel honors hidden state and renders before waiting on Supabase", async () => {
+  const script = await readFile(new URL("./community.js", import.meta.url), "utf8");
+  assert.match(script, /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
+  assert.match(script, /function openCommunity\(\)\s*\{\s*backdrop\.hidden = false;\s*render\(\);\s*void refreshAndRender\(\);/);
+  assert.match(script, /event\.key === "Escape" && !backdrop\.hidden/);
+  assert.match(script, /data-action="retry"/);
+});

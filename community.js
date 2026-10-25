@@ -31,6 +31,7 @@
       :host { all: initial; color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
       * { box-sizing: border-box; }
       button, input, textarea, select { font: inherit; }
+      [hidden] { display: none !important; }
       .launcher { position: fixed; z-index: 2147483000; right: 22px; bottom: 20px; border: 1px solid #ffffff25; border-radius: 999px; padding: 12px 18px; background: #a78bfa; color: #17151d; font-weight: 700; cursor: pointer; box-shadow: 0 8px 30px #0008; }
       .backdrop { position: fixed; z-index: 2147483001; inset: 0; display: grid; place-items: center; padding: 18px; background: #050508bb; backdrop-filter: blur(10px); }
       .panel { width: min(900px, 100%); max-height: min(780px, 94vh); min-height: min(580px, 82vh); display: flex; flex-direction: column; overflow: hidden; color: #f2eff7; background: #111016; border: 1px solid #ffffff1e; border-radius: 22px; box-shadow: 0 30px 100px #000a; }
@@ -89,23 +90,30 @@
   const backdrop = root.querySelector(".backdrop");
   const content = root.querySelector(".content");
   const notice = root.querySelector(".notice");
-  root.querySelector(".launcher").addEventListener("click", () => {
+  function openCommunity() {
     backdrop.hidden = false;
+    render();
     void refreshAndRender();
-  });
+  }
+  root.querySelector(".launcher").addEventListener("click", openCommunity);
   root.querySelector(".close").addEventListener("click", () => {
     backdrop.hidden = true;
   });
   backdrop.addEventListener("click", (event) => {
     if (event.target === backdrop) backdrop.hidden = true;
   });
+  root.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !backdrop.hidden) {
+      backdrop.hidden = true;
+      root.querySelector(".launcher").focus();
+    }
+  });
   root.addEventListener("click", handleClick);
   root.addEventListener("submit", handleSubmit);
   root.addEventListener("change", handleChange);
   render();
   if (window.location.pathname === "/admin") {
-    backdrop.hidden = false;
-    void refreshAndRender();
+    openCommunity();
   }
 
   function loadSession() {
@@ -201,7 +209,7 @@
         await fetchProfile();
         await loadTab();
       } catch (error) {
-        state.message = error.message;
+        state.message = `Error: ${error.message}`;
         if (/invalid|expired|refresh token/i.test(error.message)) {
           saveSession(null);
           state.profile = null;
@@ -221,6 +229,10 @@
     notice.classList.toggle("error", state.message.startsWith("Error:"));
     if (!state.session) {
       content.innerHTML = renderAuth();
+      return;
+    }
+    if (!state.profile) {
+      content.innerHTML = `<main><p>${state.message ? "Could not load your account. See the message above, then retry." : "Loading your account…"}</p>${state.message ? `<button class="action" data-action="retry" type="button">Retry</button>` : ""}</main>`;
       return;
     }
     const isSuspended = state.profile?.is_suspended;
@@ -523,6 +535,12 @@
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const { action, id } = button.dataset;
+    if (action === "retry") {
+      state.message = "";
+      render();
+      await refreshAndRender();
+      return;
+    }
     await run(async () => {
       switch (action) {
         case "signout":
