@@ -275,4 +275,8 @@ test("community panel honors hidden state and renders before waiting on Supabase
   assert.match(script, /function openCommunity\(\)\s*\{\s*backdrop\.hidden = false;\s*render\(\);\s*void refreshAndRender\(\);/);
   assert.match(script, /event\.key === "Escape" && !backdrop\.hidden/);
   assert.match(script, /data-action="retry"/);
+  assert.match(script, /One-time database setup needed/);
+  assert.match(script, /repository’s <code>supabase\.sql<\/code>/);
+  assert.match(script, /--community-accent:\s*#2383e2/);
+  assert.match(script, /backdrop-filter:\s*blur\(44px\) saturate\(145%\)/);
 });
