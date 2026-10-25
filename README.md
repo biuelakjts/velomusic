@@ -25,18 +25,16 @@ enforced by row-level security, including access to playlist tracks.
 
 ## App and deployment
 
-The Supabase-backed Community panel is available from the floating **Community**
-button; `/admin` opens its admin view directly. It includes email/password
-signup and login, profile customization, image uploads, profile search,
-follow/unfollow/block, public/private playlists, saved tracks, per-user
-settings, and admin controls for global settings, announcements, and account
-roles, account suspension, and playlist moderation.
+The standalone Community panel has been removed. Supabase email/password
+authentication now uses the app's existing `/login` route, and the signed-in
+profile/avatar control appears at the top-right of the app. The account menu
+supports changing username, display name, bio, and uploading an image file.
+The Supabase session is also written in the app's existing session format so
+the app recognizes the signed-in state.
 
-Because this checkout has the compiled app but not its original `../main`
-source, these are added as a standalone panel rather than woven into the
-player's existing library and settings screens. Saved tracks and playlist
-entries are managed in this panel; they are not yet synchronized with the
-player's existing likes/library.
+This checkout contains the built app but not its original `../main` source, so
+this account integration is added as a small static script rather than changes
+to the source React components.
 
 The YouTube Music device sign-in now routes its TV/OAuth requests through the
 existing Cloudflare Worker to avoid browser cross-origin failures. Deploy the

@@ -2,7 +2,7 @@ services:
   - type: web
     name: vyla-siteflare
     runtime: static
-    buildCommand: cp workeradd.js community.js dist/
+    buildCommand: cp workeradd.js supabase-account.js dist/
     staticPublishPath: ./dist
     routes:
       - type: rewrite

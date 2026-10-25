@@ -269,14 +269,20 @@ test("browser bridge sends YouTube OAuth calls to the configured Worker", async 
   assert.equal(forwarded.options.body, "{}");
 });
 
-test("community panel honors hidden state and renders before waiting on Supabase", async () => {
-  const script = await readFile(new URL("./community.js", import.meta.url), "utf8");
-  assert.match(script, /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
-  assert.match(script, /function openCommunity\(\)\s*\{\s*backdrop\.hidden = false;\s*render\(\);\s*void refreshAndRender\(\);/);
-  assert.match(script, /event\.key === "Escape" && !backdrop\.hidden/);
-  assert.match(script, /data-action="retry"/);
-  assert.match(script, /One-time database setup needed/);
-  assert.match(script, /repository’s <code>supabase\.sql<\/code>/);
-  assert.match(script, /--community-accent:\s*#2383e2/);
-  assert.match(script, /backdrop-filter:\s*blur\(44px\) saturate\(145%\)/);
+test("Supabase auth is attached to the existing login route and profile button", async () => {
+  const script = await readFile(new URL("./supabase-account.js", import.meta.url), "utf8");
+  const index = await readFile(new URL("./dist/index.html", import.meta.url), "utf8");
+  assert.match(script, /authRequest\("token\?grant_type=password"/);
+  assert.match(script, /authRequest\("signup"/);
+  assert.match(script, /\/login/);
+  assert.match(script, /liner_auth_session/);
+  assert.match(script, /id = "vyla-profile-button"/);
+  assert.match(script, /storage\/v1\/object\/avatars/);
+  assert.match(script, /profiles/);
+  assert.doesNotMatch(index, /community\.js/);
+  assert.match(index, /supabase-account\.js/);
+  await assert.rejects(
+    readFile(new URL("./community.js", import.meta.url)),
+    { code: "ENOENT" },
+  );
 });
