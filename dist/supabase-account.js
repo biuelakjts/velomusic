@@ -9,12 +9,12 @@
   let profileMenu;
   let feedback = "";
   let pending = false;
-  let pendingSignup = null;
   let adminPanel = null;
   let adminSection = "users";
 
   const style = document.createElement("style");
   style.textContent = `
+    #root input#auth-email { direction:ltr !important; text-align:left !important; unicode-bidi:plaintext; }
     #vyla-profile-menu[hidden], #vyla-profile-button[hidden] { display:none !important; }
     #vyla-profile-button {
       position:fixed; top:8px; right:14px; z-index:2147482999; display:grid;
@@ -123,13 +123,7 @@
     }
 
     const form = target.closest("form");
-    if (form?.querySelector("#auth-email")) {
-      const button = target.closest("button");
-      if (button?.type === "button" && !button.hasAttribute("aria-label")) {
-        pendingSignup = null;
-        removeLoginFeedback(form);
-      }
-    }
+    if (form?.querySelector("#auth-email")) removeLoginFeedback(form);
 
     if (target.closest("#vyla-profile-button")) {
       profileMenu.hidden = !profileMenu.hidden;
@@ -247,58 +241,23 @@
     if (!(form instanceof HTMLFormElement)) return;
     patchLoginForms();
     const usernameInput = form.querySelector("#auth-email");
-    const signupUsernameInput = form.querySelector("#auth-username");
     const username = usernameInput?.value.trim().toLowerCase() || "";
     const password = form.querySelector("#auth-password")?.value || "";
     const confirmPassword = form.querySelector("#auth-confirm")?.value;
-    const signupUsername = signupUsernameInput?.value.trim().toLowerCase();
-    const displayName = form.querySelector("#auth-display-name")?.value.trim();
 
-    if (confirmPassword !== undefined && pendingSignup?.alias === username) {
-      return;
-    }
-
-    if (signupUsernameInput && displayName !== undefined) {
+    if (usernameInput && confirmPassword !== undefined) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (!pendingSignup) {
-        showLoginFeedback(form, "Your signup details expired. Go back and continue again.");
-        return;
-      }
-      if (!isValidUsername(signupUsername)) {
-        showLoginFeedback(form, "Username must be 3–24 characters using letters, numbers, or underscores.");
-        return;
-      }
       await authenticate(form, "signup", {
-        ...pendingSignup,
-        username: signupUsername,
-        displayName: displayName || signupUsername,
+        username,
+        password,
+        confirmPassword,
+        displayName: username,
       });
       return;
     }
 
     if (!usernameInput) return;
-    if (confirmPassword !== undefined) {
-      const loginAlias = accountAlias(username);
-      if (pendingSignup?.alias === loginAlias) {
-        pendingSignup = { ...pendingSignup, password, confirmPassword };
-        return;
-      }
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (!isValidUsername(username)) {
-        showLoginFeedback(form, "Username must be 3–24 characters using letters, numbers, or underscores.");
-        return;
-      }
-      pendingSignup = { username, password, confirmPassword, alias: loginAlias };
-      removeLoginFeedback(form);
-      setReactInputValue(usernameInput, loginAlias);
-      window.setTimeout(() => {
-        if (form.isConnected) form.requestSubmit();
-      }, 0);
-      return;
-    }
-
     event.preventDefault();
     event.stopImmediatePropagation();
     await authenticate(form, "login", { username, password });
@@ -343,7 +302,6 @@
       }
       session = toAppSession(result);
       localStorage.setItem(AUTH_KEY, JSON.stringify(session));
-      pendingSignup = null;
       window.dispatchEvent(new Event("auth:changed"));
       const next = new URLSearchParams(window.location.search).get("next");
       window.location.assign(next?.startsWith("/") && !next.startsWith("//") ? next : "/");
@@ -484,6 +442,9 @@
       if (input.inputMode !== "text") input.inputMode = "text";
       if (input.autocomplete !== "username") input.autocomplete = "username";
       if (input.placeholder !== "Username") input.placeholder = "Username";
+      if (input.dir !== "ltr") input.dir = "ltr";
+      if (input.style.direction !== "ltr") input.style.direction = "ltr";
+      if (input.style.textAlign !== "left") input.style.textAlign = "left";
       input.setAttribute("aria-label", "Username");
       const label = form.querySelector('label[for="auth-email"]');
       if (label && label.textContent.trim() !== "Username") label.textContent = "Username";
@@ -496,13 +457,6 @@
 
   function isValidUsername(username) {
     return /^[a-z0-9_]{3,24}$/i.test(String(username || ""));
-  }
-
-  function setReactInputValue(input, value) {
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    if (!setter) throw new Error("Could not prepare the signup form.");
-    setter.call(input, value);
-    input.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   function initializeAdmin() {

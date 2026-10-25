@@ -283,12 +283,13 @@ test("Supabase auth is attached to the existing login route and profile button",
   assert.match(script, /profiles/);
   assert.match(script, /#auth-email/);
   assert.match(script, /@users\.velomusic\.invalid/);
-  assert.match(script, /pendingSignup\?\.alias === username/);
-  assert.doesNotMatch(script, /setInputDisplayValue/);
+  assert.match(script, /usernameInput && confirmPassword !== undefined/);
+  assert.match(script, /direction:ltr !important/);
+  assert.doesNotMatch(script, /setReactInputValue|pendingSignup/);
   assert.match(script, /patchLoginForms\(\);/);
   assert.doesNotMatch(script, /patchLoginForm\(/);
   assert.match(script, /input\.placeholder !== "Username"/);
-  assert.match(script, /form\.querySelector\("#auth-username"\)/);
+  assert.match(script, /displayName: username/);
   assert.match(script, /routeIsAdmin/);
   assert.match(script, /rpc\/is_admin/);
   assert.match(script, /renderAdminUsers/);
