@@ -14,6 +14,12 @@ const YOUTUBE_ENDPOINTS = new Set([
   "player",
   "account/accounts_list",
 ]);
+const YOUTUBE_AUTH_ENDPOINTS = new Map([
+  ["tv", { method: "GET", url: "https://www.youtube.com/tv" }],
+  ["device/code", { method: "POST", url: "https://www.youtube.com/o/oauth2/device/code" }],
+  ["token", { method: "POST", url: "https://www.youtube.com/o/oauth2/token" }],
+  ["revoke", { method: "POST", url: "https://www.youtube.com/o/oauth2/revoke" }],
+]);
 const ALLOWED_MEDIA_HOSTS = [
   /(^|\.)googlevideo\.com$/i,
   /^[a-f0-9]{32}\.r2\.cloudflarestorage\.com$/i,
@@ -105,6 +111,63 @@ async function proxyVisitorData(request, response, fetchImpl) {
   });
   response.writeHead(upstream.status, {
     "content-type": upstream.headers.get("content-type") || "text/plain",
+    "cache-control": "no-store",
+  });
+  if (upstream.body) {
+    Readable.fromWeb(upstream.body).pipe(response);
+  } else {
+    response.end();
+  }
+}
+
+async function proxyYoutubeAuthRequest(request, response, url, fetchImpl) {
+  const endpoint = url.pathname.slice("/youtube-auth/".length);
+  let target;
+  if (endpoint === "player-script") {
+    if (request.method !== "GET") {
+      sendText(response, 405, "Method not allowed");
+      return;
+    }
+    const playerPath = url.searchParams.get("path") || "";
+    if (!/^\/s\/player\/[a-zA-Z0-9_./-]+\.js$/.test(playerPath) || playerPath.split("/").includes("..")) {
+      sendText(response, 400, "Player script path is not allowed");
+      return;
+    }
+    target = new URL(playerPath, "https://www.youtube.com");
+  } else {
+    const config = YOUTUBE_AUTH_ENDPOINTS.get(endpoint);
+    if (!config) {
+      sendText(response, 404, "Not found");
+      return;
+    }
+    if (request.method !== config.method) {
+      sendText(response, 405, "Method not allowed");
+      return;
+    }
+    target = new URL(config.url);
+  }
+
+  const headers = new Headers();
+  for (const name of ["accept", "content-type", "accept-language"]) {
+    const value = request.headers[name];
+    if (typeof value === "string") headers.set(name, value);
+  }
+  headers.set(
+    "user-agent",
+    endpoint === "tv"
+      ? "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version"
+      : "Mozilla/5.0",
+  );
+  headers.set("referer", "https://www.youtube.com/tv");
+
+  const upstream = await fetchImpl(target, {
+    method: request.method,
+    headers,
+    body: request.method === "POST" ? request : undefined,
+    ...(request.method === "POST" ? { duplex: "half" } : {}),
+  });
+  response.writeHead(upstream.status, {
+    "content-type": upstream.headers.get("content-type") || "application/octet-stream",
     "cache-control": "no-store",
   });
   if (upstream.body) {
@@ -237,6 +300,8 @@ export function createSiteflareServer({
     const url = new URL(request.url || "/", "http://localhost");
     const handle = url.pathname.startsWith("/youtube/")
       ? proxyYoutubeRequest(request, response, url, fetchImpl)
+      : url.pathname.startsWith("/youtube-auth/")
+        ? proxyYoutubeAuthRequest(request, response, url, fetchImpl)
       : url.pathname === "/youtube-visitor-data"
         ? proxyVisitorData(request, response, fetchImpl)
         : url.pathname === "/media-proxy"

@@ -112,6 +112,30 @@ test("proxies visitor data requests", async () => {
   assert.equal(upstreamCalls.at(-1).url, "https://www.youtube.com/sw.js_data");
 });
 
+test("proxies YouTube device sign-in requests through the app server", async () => {
+  const tvResponse = await fetch(`${baseUrl}/youtube-auth/tv`);
+  assert.equal(tvResponse.status, 200);
+  assert.equal(await tvResponse.text(), "upstream response");
+  assert.equal(String(upstreamCalls.at(-1).url), "https://www.youtube.com/tv");
+  assert.equal(upstreamCalls.at(-1).options.method, "GET");
+
+  const codeResponse = await fetch(`${baseUrl}/youtube-auth/device/code`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_id: "test-client" }),
+  });
+  assert.equal(codeResponse.status, 200);
+  assert.equal(
+    String(upstreamCalls.at(-1).url),
+    "https://www.youtube.com/o/oauth2/device/code",
+  );
+  assert.equal(upstreamCalls.at(-1).options.method, "POST");
+  assert.equal(
+    upstreamCalls.at(-1).body,
+    JSON.stringify({ client_id: "test-client" }),
+  );
+});
+
 test("proxies Googlevideo media with range requests", async () => {
   const mediaUrl =
     "https://rr1---sn.googlevideo.com/videoplayback?expire=123&range=0-10";
@@ -211,6 +235,42 @@ test("Worker proxies YouTube device authorization through the CORS-enabled auth 
   assert.equal(upstreamRequest.options.method, "POST");
 });
 
+test("Worker serves the YouTube TV page and its OAuth client script through CORS", async () => {
+  const requests = [];
+  const tvPage = await handleWorkerRequest(
+    new Request("https://worker.example/youtube-auth/tv", {
+      headers: { origin: "https://music.example" },
+    }),
+    async (url, options) => {
+      requests.push({ url: String(url), options });
+      return new Response("tv page", { headers: { "content-type": "text/html" } });
+    },
+  );
+  assert.equal(tvPage.status, 200);
+  assert.equal(tvPage.headers.get("access-control-allow-origin"), "*");
+  assert.equal(await tvPage.text(), "tv page");
+  assert.equal(requests[0].url, "https://www.youtube.com/tv");
+
+  const playerScript = await handleWorkerRequest(
+    new Request(
+      "https://worker.example/youtube-auth/player-script?path=%2Fs%2Fplayer%2Fexample%2Fbase.js",
+      { headers: { origin: "https://music.example" } },
+    ),
+    async (url) => {
+      requests.push({ url: String(url) });
+      return new Response("oauth client script", {
+        headers: { "content-type": "application/javascript" },
+      });
+    },
+  );
+  assert.equal(playerScript.status, 200);
+  assert.equal(await playerScript.text(), "oauth client script");
+  assert.equal(
+    requests[1].url,
+    "https://www.youtube.com/s/player/example/base.js",
+  );
+});
+
 test("Worker preflights YouTube auth requests and rejects arbitrary player scripts", async () => {
   const preflight = await handleWorkerRequest(
     new Request("https://worker.example/youtube-auth/token", {
@@ -239,11 +299,15 @@ test("Worker preflights YouTube auth requests and rejects arbitrary player scrip
   assert.equal(upstreamCalled, false);
 });
 
-test("browser bridge sends YouTube OAuth calls to the configured Worker", async () => {
+test("browser bridge sends YouTube OAuth calls to the app server", async () => {
   const script = await readFile(new URL("./workeradd.js", import.meta.url), "utf8");
+  const deployment = await readFile(new URL("./render.yaml", import.meta.url), "utf8");
   let forwarded;
   const window = {
-    location: { href: "https://music.example/" },
+    location: {
+      href: "https://music.example/",
+      origin: "https://music.example",
+    },
     fetch(input, options) {
       forwarded = { input: String(input), options };
       return Promise.resolve(new Response("ok"));
@@ -263,8 +327,10 @@ test("browser bridge sends YouTube OAuth calls to the configured Worker", async 
   });
   assert.equal(
     forwarded.input,
-    "https://velo.envyrants.workers.dev/youtube-auth/device/code",
+    "https://music.example/youtube-auth/device/code",
   );
   assert.equal(forwarded.options.method, "POST");
   assert.equal(forwarded.options.body, "{}");
+  assert.match(deployment, /runtime: node/);
+  assert.match(deployment, /startCommand: node server\.mjs/);
 });

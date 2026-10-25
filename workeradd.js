@@ -62,7 +62,7 @@
       proxiedPath
         ? `${proxiedPath}${proxiedPath.includes("?") ? "" : requestUrl.search}`
         : `${requestUrl.pathname}${requestUrl.search}`,
-      workerOrigin,
+      proxiedPath ? window.location.origin : workerOrigin,
     );
     return input instanceof Request
       ? originalFetch(new Request(workerUrl, input))
