@@ -254,6 +254,10 @@
     const signupUsername = signupUsernameInput?.value.trim().toLowerCase();
     const displayName = form.querySelector("#auth-display-name")?.value.trim();
 
+    if (confirmPassword !== undefined && pendingSignup?.alias === username) {
+      return;
+    }
+
     if (signupUsernameInput && displayName !== undefined) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -290,13 +294,7 @@
       removeLoginFeedback(form);
       setReactInputValue(usernameInput, loginAlias);
       window.setTimeout(() => {
-        if (!form.isConnected) return;
-        form.requestSubmit();
-        window.setTimeout(() => {
-          if (usernameInput.isConnected && pendingSignup?.alias === loginAlias) {
-            setInputDisplayValue(usernameInput, username);
-          }
-        }, 0);
+        if (form.isConnected) form.requestSubmit();
       }, 0);
       return;
     }
@@ -487,9 +485,6 @@
       if (input.autocomplete !== "username") input.autocomplete = "username";
       if (input.placeholder !== "Username") input.placeholder = "Username";
       input.setAttribute("aria-label", "Username");
-      if (pendingSignup?.alias && form.querySelector("#auth-confirm") && input.value === pendingSignup.alias) {
-        setInputDisplayValue(input, pendingSignup.username);
-      }
       const label = form.querySelector('label[for="auth-email"]');
       if (label && label.textContent.trim() !== "Username") label.textContent = "Username";
     });
@@ -508,11 +503,6 @@
     if (!setter) throw new Error("Could not prepare the signup form.");
     setter.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
-  }
-
-  function setInputDisplayValue(input, value) {
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    if (setter) setter.call(input, value);
   }
 
   function initializeAdmin() {
