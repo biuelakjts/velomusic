@@ -31929,6 +31929,9 @@ function HD(e) {
     let t = m(m(e)?.playabilityStatus);
     return !t || t.status === `OK` ? null : typeof t.reason == `string` && t.reason ? t.reason : `Playability status ${String(t.status)}`
 }
+function isVisitorVerificationError(e) {
+    return /confirm you.re not a bot|automated queries|unusual traffic/i.test(String(e ?? ``))
+}
 var UD = null
   , WD = !1;
 function GD() {
@@ -32053,7 +32056,7 @@ async function rO(e, t, n) {
         signal: n.signal
     })
       , a = await i();
-    VD(a) && (ce(),
+        (VD(a) || isVisitorVerificationError(HD(a))) && (ce(),
     a = await i());
     let o = HD(a);
     if (o)
@@ -32091,8 +32094,9 @@ async function fO(t, n, r) {
         } catch (t) {
             if (n.signal?.aborted)
                 throw t;
-            JD();
             let a = t instanceof Error ? t.message : String(t);
+            isVisitorVerificationError(a) && ce();
+            JD();
             dO = a,
             r.push(`WEB_REMIX: ${a}`),
             e(`yellow`, `playback`, `WEB_REMIX attempt ${i + 1} failed: ${a}`)
